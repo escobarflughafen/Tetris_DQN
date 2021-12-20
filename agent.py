@@ -1,5 +1,7 @@
 import numpy as np
-import os, random, time
+import os
+import random
+import time
 import torch
 import torch.nn as nn
 from tetris import Tetris
@@ -8,30 +10,8 @@ from deep_q_network import DeepQNetwork1 as DeepQNetwork
 import matplotlib.pyplot as plt
 import matplotlib
 import argparse
-import datetime, dateutil
-
-matplotlib.use('pdf')
-
-
-def get_args():
-    parser = argparse.ArgumentParser(
-        """Implementation of Deep Q Network to play Tetris""")
-    parser.add_argument("--batch_size", type=int, default=128,
-                        help="The number of images per batch")
-    parser.add_argument("--lr", type=float, default=(1e-3))
-    parser.add_argument("--gamma", type=float, default=0.90)
-    parser.add_argument("--initial_epsilon", type=float, default=1)
-    parser.add_argument("--final_epsilon", type=float, default=1e-3)
-    parser.add_argument("--epsilon_decay_rate", type=float, default=0.0005)
-
-    parser.add_argument("--num_epochs", type=int, default=3000)
-    parser.add_argument("--target_net_update_period", type=int, default=200)
-    parser.add_argument("--save_interval", type=int, default=1000)
-    parser.add_argument("--memory_size", type=int, default=30000)
-    parser.add_argument("--log_path", type=str, default="logs")
-
-    args = parser.parse_args()
-    return args
+import datetime
+import dateutil
 
 
 class Agent:
@@ -50,6 +30,7 @@ class Agent:
         self.epsilon_decay_rate = opt.epsilon_decay_rate
         self.discount_factor = opt.gamma
         self.log_path = opt.log_path
+        self.model_path = opt.model_path
         self.results = {
             'scores': [],
             'cleared_lines': [],
@@ -60,12 +41,16 @@ class Agent:
         self.action = None
         self.next_state = None
         self.loss = nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=opt.lr)
+        self.optimizer = torch.optim.Adam(
+            self.policy_net.parameters(), lr=opt.lr)
 
         self.epoch = 1
 
         if (not os.path.isdir(self.log_path)):
             os.mkdir(os.path.join(os.getcwd(), self.log_path))
+
+        if (not os.path.isdir(self.model_path)):
+            os.mkdir(os.path.join(os.getcwd(), self.model_path))
 
     def reset(self):
         pass
@@ -97,13 +82,15 @@ class Agent:
     def _epsilon_greedy_play(self):
         state = self.state
         actions, next_states = self.get_actions()
-        state_action_pairs = torch.stack([torch.cat((state, torch.tensor(action))) for action in actions])
+        state_action_pairs = torch.stack(
+            [torch.cat((state, torch.tensor(action))) for action in actions])
 
         u = random.random()
 
         # updating epsilon value
         if (self.epsilon > self.final_epsilon):
-            self.epsilon = max(self.epsilon - self.epsilon_decay_rate, self.final_epsilon)
+            self.epsilon = max(
+                self.epsilon - self.epsilon_decay_rate, self.final_epsilon)
 
         if u < self.epsilon:
             index = random.randint(0, len(actions) - 1)
@@ -123,7 +110,8 @@ class Agent:
 
         next_actions = self.get_actions()[0]
 
-        self.memory.append([state_action_pairs[index], reward, next_state, next_actions, is_game_over])
+        self.memory.append([state_action_pairs[index], reward,
+                           next_state, next_actions, is_game_over])
 
         if is_game_over:
             self.results['scores'].append(self.game.score)
@@ -142,7 +130,8 @@ class Agent:
 
         # updating epsilon value
         if (self.epsilon > self.final_epsilon and self.epoch > 1):
-            self.epsilon = max(self.epsilon - self.epsilon_decay_rate, self.final_epsilon)
+            self.epsilon = max(
+                self.epsilon - self.epsilon_decay_rate, self.final_epsilon)
 
         if u <= self.epsilon:
             index = random.randint(0, len(actions) - 1)
@@ -160,9 +149,12 @@ class Agent:
 
         reward, is_game_over = self.game.step(action, render)
 
-        self.memory.append([self.state, action, reward, next_state, is_game_over])
+        self.memory.append(
+            [self.state, action, reward, next_state, is_game_over])
 
         if is_game_over:
+            if render:
+                self.game.render(save_img=True)
             self.results['scores'].append(self.game.score)
             self.results['dropped_tetrominoes'].append(self.game.tetrominoes)
             self.results['cleared_lines'].append(self.game.cleared_lines)
@@ -179,13 +171,15 @@ class Agent:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
             self.epoch += 1
             batch = random.sample(self.memory, self.batch_size)
-            state_batch, action_batch, reward_batch, next_state_batch, is_game_over_batch = zip(*batch)
+            state_batch, action_batch, reward_batch, next_state_batch, is_game_over_batch = zip(
+                *batch)
 
             q_values = self.policy_net(torch.stack(state_batch))
 
             self.target_net.eval()
             with torch.no_grad():
-                next_q_value_prediction_batch = self.target_net(torch.stack(next_state_batch))
+                next_q_value_prediction_batch = self.target_net(
+                    torch.stack(next_state_batch))
 
             y_tuple = tuple(torch.tensor([reward]) if is_game_over else reward + self.discount_factor * prediction
                             for reward, is_game_over, prediction in
@@ -206,7 +200,8 @@ class Agent:
     def _train(self):
         if len(self.memory) >= self.batch_size * 2:
             self.epoch += 1
-            batch = list(filter(lambda x: x[-1] == False, random.sample(self.memory, self.batch_size)))
+            batch = list(
+                filter(lambda x: x[-1] == False, random.sample(self.memory, self.batch_size)))
             print('actual batch size:', len(batch))
             state_action_pair_batch, reward_batch, next_state_batch, next_actions_batch, is_game_over_batch = zip(
                 *batch)
@@ -222,9 +217,11 @@ class Agent:
                     pred = self.policy_net(next_state_action_pairs)
                     max_index = torch.argmax(pred).item()
 
-                    next_state_action_pair_batch.append(next_state_action_pairs[max_index])
+                    next_state_action_pair_batch.append(
+                        next_state_action_pairs[max_index])
 
-                next_q_value_prediction_batch = self.policy_net(torch.stack(next_state_action_pair_batch))
+                next_q_value_prediction_batch = self.policy_net(
+                    torch.stack(next_state_action_pair_batch))
             self.policy_net.train()
 
             y_tuple = tuple(torch.tensor([reward]) if is_game_over else reward + self.discount_factor * prediction
@@ -243,13 +240,25 @@ class Agent:
                 loss
             ))
 
-    def plot_results(self):
-        pass
-    
+    def plot_results(self, filename=None, dpi=300, backend='pdf'):
+        matplotlib.use(backend)
+        fig, axs = plt.subplots(3)
+        for i, key in enumerate(self.results.keys()):
+            axs[i].plot(*zip(*list(enumerate(self.results[key]))),
+                        label=key, linewidth=0.5)
+            axs[i].legend()
 
-        
-def load_and_play(model_path, round=-1):
-    agent = Agent(get_args())
+        plt.savefig(os.path.join(self.log_path, filename or 'tetris_{}epoch_{}.{}'.format(
+            self.epoch, time.strftime('%Y-%m-%d_%H_%M_%S'), backend)), dpi=dpi)
+        plt.close('all')
+
+    def save_model(self, filename=None):
+        torch.save(self.policy_net, os.path.join(self.model_path, filename or 'policy_net_{}_{}'.format(
+            self.epoch, time.strftime('%Y-%m-%d_%H_%M_%S'))))
+
+
+def load_and_play(model_path, args, round=-1):
+    agent = Agent(args)
     agent.policy_net = torch.load(model_path)
     agent.epsilon = agent.final_epsilon
 
@@ -257,54 +266,17 @@ def load_and_play(model_path, round=-1):
         while True:
             done = agent.epsilon_greedy_play(render=True)[-1]
             if done:
-                print(agent.results['scores'][-1],
-                    agent.results['dropped_tetrominoes'][-1],
-                    agent.results['cleared_lines'][-1])
+                print('results:\t',
+                      agent.results['scores'][-1],
+                      agent.results['dropped_tetrominoes'][-1],
+                      agent.results['cleared_lines'][-1])
                 break
             else:
                 pass
 
-    if round<0:
+    if round < 0:
         while True:
             play()
     else:
         for i in range(round):
             play()
-    
-            
-
-
-
-if __name__ == '__main__':
-    agent = Agent(get_args())
-
-    start_epoch = time.time()
-    for i in range(agent.batch_size * 20):
-        if(i % agent.batch_size == 0):
-           print('exploring step:', i)
-        agent.epsilon_greedy_play(render=False)
-
-    while (True):
-        do_render = agent.epoch >= 100 and (agent.epoch) % (4 * 50) == 0
-        while not agent.epsilon_greedy_play(render= do_render)[-1]:
-            pass
-
-        agent.train()
-        print('time elapsed:',
-              time.time() - start_epoch
-              , agent.results['scores'][-1]
-              , agent.results['dropped_tetrominoes'][-1]
-              , agent.results['cleared_lines'][-1])
-        print('epsilon:', agent.epsilon)
-
-        if ((agent.epoch) % 100 == 0):
-            fig, axs = plt.subplots(3)
-            for i, key in enumerate(agent.results.keys()):
-                axs[i].plot(*zip(*list(enumerate(agent.results[key]))), label=key, linewidth=0.5)
-                axs[i].legend()
-
-            plt.savefig(os.path.join(agent.log_path, 'tetris_{}epoch_{}.pdf'.format(agent.epoch, time.strftime('%Y-%m-%d_%H_%M_%S'))), dpi=300)
-            plt.close('all')
-
-        if ((agent.epoch) % 100 == 0):
-            torch.save(agent.policy_net, os.path.join(agent.log_path, 'policy_net_{}_{}'.format(agent.epoch, time.strftime('%Y-%m-%d_%H_%M_%S'))))

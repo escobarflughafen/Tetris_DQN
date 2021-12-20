@@ -9,8 +9,6 @@ class DeepQNetwork2(nn.Module):
         self.layer3 = nn.Sequential(nn.Linear(128, 128), nn.ReLU(inplace=True))
         self.layer4 = nn.Sequential(nn.Linear(128, 1))
 
-        print(self.modules())
-
         self._create_weights()
 
     # initialize weights by xavier_uniform
@@ -29,19 +27,12 @@ class DeepQNetwork2(nn.Module):
         return x
 
 class DeepQNetwork1(nn.Module):
-    # layer1: 4
-    # layer2: 64
-    # layer3: 64
-    # layer4: 1
     def __init__(self):
         super(DeepQNetwork1, self).__init__()
 
-        #self.layer1 = nn.Sequential(nn.Linear(1+1+10+9+10, 128), nn.ReLU(inplace=True))        # 5 for state
         self.layer1 = nn.Sequential(nn.Linear(5, 80), nn.ReLU(inplace=True))        # 5 for state
         self.layer2 = nn.Sequential(nn.Linear(80, 80), nn.ReLU(inplace=True))
         self.layer3 = nn.Sequential(nn.Linear(80, 1))
-
-        print(self.modules())
 
         self._create_weights()
 

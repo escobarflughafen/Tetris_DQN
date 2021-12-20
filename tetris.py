@@ -1,6 +1,8 @@
 """
-@author: Viet Nguyen <nhviet1009@gmail.com>
+acknowledges:
+    @original_author: Viet Nguyen <nhviet1009@gmail.com>
 """
+
 import numpy as np
 from PIL import Image
 import cv2
@@ -8,6 +10,7 @@ import time
 from matplotlib import style
 import torch
 import random
+import os
 
 style.use("ggplot")
 
@@ -255,7 +258,7 @@ class Tetris:
 
         return score, self.gameover
 
-    def render(self, video=None):
+    def render(self, save_img=False, video=None):
         if not self.gameover:
             img = [self.piece_colors[p] for row in self.get_current_board_state() for p in row]
         else:
@@ -295,6 +298,9 @@ class Tetris:
 
         if video:
             video.write(img)
+        if save_img:
+            cv2.imwrite(os.path.join('./logs', 'tetrith_{}.png'.format(time.strftime('%Y-%m-%d_%H_%M_%S'))), img)
+            
 
         cv2.imshow("my Tetrith", img)
         cv2.waitKey(1)
