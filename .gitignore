@@ -1,1 +1,7 @@
+<<<<<<< HEAD
+=======
+__pycache__
+logs
+models
+>>>>>>> master
 .DS_Store
