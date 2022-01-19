@@ -21,6 +21,7 @@ class Agent:
         self.batch_size = opt.batch_size
         self.policy_net = DeepQNetwork()
         self.target_net = DeepQNetwork()
+        self.start_time = time.time()
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
         self.target_net_update_period = opt.target_net_update_period
@@ -36,7 +37,7 @@ class Agent:
             'cleared_lines': [],
             'dropped_tetrominoes': []
         }
-
+        self.best_score = 0
         self.state = self.game.reset()
         self.action = None
         self.next_state = None
@@ -158,6 +159,9 @@ class Agent:
             self.results['scores'].append(self.game.score)
             self.results['dropped_tetrominoes'].append(self.game.tetrominoes)
             self.results['cleared_lines'].append(self.game.cleared_lines)
+            if(self.game.score > self.best_score):
+                self.best_score = self.game.score
+                self.save_model("best_model_{}.pth".format(self.best_score) )
             self.state = self.game.reset()
         else:
             self.state = next_state

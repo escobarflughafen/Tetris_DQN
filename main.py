@@ -52,6 +52,7 @@ if __name__ == '__main__':
             #do_render = agent.epoch >= 100 and (agent.epoch) % (4 * 50) == 0
             while not agent.epsilon_greedy_play(render=False)[-1]:
                 pass
+
             
             agent.train()
             print('time elapsed:',
@@ -61,7 +62,9 @@ if __name__ == '__main__':
     
             if ((agent.epoch) % args.save_interval == 0):
                 agent.plot_results()
-                agent.save_model()
+                #agent.save_model()
+            
+            
     
     else:
         print('error: invaild mode name')
